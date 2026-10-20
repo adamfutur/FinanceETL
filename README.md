@@ -1,161 +1,446 @@
 # FinanceETL — Financial Data Engineering Platform
 
-An end-to-end financial data engineering project that transforms retail transaction data into analytics-ready datasets. It combines modular Python ETL components, foreign-exchange rate retrieval with local caching, a PostgreSQL dimensional warehouse, RFM customer segmentation, rule-based transaction anomaly flags, predictive analytics, and a Streamlit dashboard. Optional code paths support Google Cloud Storage and BigQuery.
+An end-to-end data engineering project that transforms raw retail transaction data into analytics-ready datasets. The platform demonstrates ETL pipeline development, data cleaning, multi-currency revenue calculations, customer segmentation, anomaly detection, dimensional data warehousing, predictive analytics, and interactive dashboards.
 
-> **Project scope:** This is a portfolio / learning project using the UCI Online Retail dataset. Its CDC behavior is simulated by splitting a dataset into batches; the anomaly rules are screening heuristics, not a production fraud system. Cloud and Airflow components require environment-specific configuration and should be validated before use.
+Built with Python, PostgreSQL, SQLAlchemy, pandas, scikit-learn, Streamlit, and optional Google Cloud integrations.
 
-## Contents
+---
 
+## Table of Contents
+
+- [Project Overview](#project-overview)
 - [Architecture](#architecture)
-- [Capabilities](#capabilities)
-- [Data flow](#data-flow)
-- [Technology stack](#technology-stack)
-- [Repository layout](#repository-layout)
-- [Quick start](#quick-start)
+- [Key Features](#key-features)
+- [Technology Stack](#technology-stack)
+- [Project Structure](#project-structure)
+- [Data Pipeline](#data-pipeline)
+- [Data Warehouse Design](#data-warehouse-design)
+- [Analytics and Business Intelligence](#analytics-and-business-intelligence)
+- [Installation and Setup](#installation-and-setup)
 - [Configuration](#configuration)
-- [Run the pipeline](#run-the-pipeline)
-- [Analytics and warehouse](#analytics-and-warehouse)
-- [Dashboard](#dashboard)
-- [Tests and data quality](#tests-and-data-quality)
-- [Optional Google Cloud integration](#optional-google-cloud-integration)
-- [Airflow orchestration](#airflow-orchestration)
-- [Current limitations and engineering notes](#current-limitations-and-engineering-notes)
+- [Running the Application](#running-the-application)
+- [Data Quality and Testing](#data-quality-and-testing)
+- [Google Cloud Integration](#google-cloud-integration)
+- [Apache Airflow](#apache-airflow)
+- [Known Limitations](#known-limitations)
+- [Future Improvements](#future-improvements)
 - [License](#license)
+
+---
+
+## Project Overview
+
+Financial and retail transaction data often requires extensive preparation before it can support reliable business decisions. Inconsistent records, multiple currencies, customer purchasing patterns, and unusual transactions can make analysis difficult.
+
+**FinanceETL** addresses these challenges through a modular data pipeline that extracts retail transaction data, cleans and enriches it, calculates analytical metrics, and loads the results into a relational data warehouse.
+
+The project uses the UCI Online Retail dataset and provides an end-to-end demonstration of data engineering concepts, from source ingestion to business intelligence.
+
+### Project objectives
+
+- Build a modular ETL pipeline for retail transaction data.
+- Automate data ingestion and foreign exchange rate retrieval.
+- Implement data cleaning, validation, and transformation.
+- Design a dimensional data warehouse using a star-schema approach.
+- Perform customer segmentation using Recency, Frequency, and Monetary analysis.
+- Identify potentially suspicious transactions using explainable rules.
+- Generate baseline sales forecasts and customer churn-risk scores.
+- Visualize business performance through an interactive dashboard.
+- Explore optional cloud data storage and analytical processing with Google Cloud.
 
 ## Architecture
 
+The platform separates ingestion, transformation, analytics, storage, and visualization into dedicated components.
+
 ```mermaid
 flowchart TD
-    A[UCI Online Retail XLSX / local files] --> B[CSVLoader]
-    C[ExchangeRate-API] --> D[FXFetcher + 24-hour cache]
-    B --> E[DataCleaner]
-    E --> F[CurrencyTransformer]
-    D --> F
-    F --> G[RFMSegmenter]
-    F --> H[FraudDetector]
-    H --> I[QualityChecks]
-    G --> J[WarehouseLoader]
-    I --> J
-    J --> K[(PostgreSQL)]
-    K --> L[SQL Views]
-    L --> M[Streamlit + Plotly]
-    L --> N[Power BI connection guide]
-    F --> O[Sales forecast / churn-risk heuristics]
-    O --> P[CSV outputs in data/processed]
-    B -. optional .-> Q[Google Cloud Storage]
-    J -. optional .-> R[BigQuery]
+    A["UCI Online Retail Dataset"] --> B["Data Ingestion"]
+    C["Exchange Rate API"] --> D["FX Rate Fetcher and Cache"]
+    B --> E["Data Cleaning"]
+    D --> F["Multi-Currency Transformation"]
+    E --> F
+    F --> G["RFM Customer Segmentation"]
+    F --> H["Transaction Anomaly Detection"]
+    G --> I["Data Quality Validation"]
+    H --> I
+    I --> J["PostgreSQL Data Warehouse"]
+    J --> K["Dimensional Tables and SQL Views"]
+    K --> L["Streamlit Dashboard"]
+    K --> M["Power BI Connectivity"]
+    F --> N["Predictive Analytics"]
+    N --> O["Forecast and Churn-Risk CSVs"]
+    B -. Optional .-> P["Google Cloud Storage"]
+    J -. Optional .-> Q["Google BigQuery"]
 ```
 
-The main orchestrator is `main.py`. It selects an execution mode, coordinates ingestion and transformations, runs quality checks, and loads records into PostgreSQL. Predictive outputs are generated in a separate mode and written to CSV for the dashboard to consume.
+### Architecture layers
 
-## Capabilities
-
-### Ingestion and foreign exchange rates
-
-- Downloads the UCI Online Retail Excel dataset when no supported local source file is found.
-- Loads Excel and CSV inputs and removes exact duplicate rows after concatenation.
-- Retrieves latest exchange rates using ExchangeRate-API, with a 24-hour local cache.
-- Provides fallback development rates when no usable API key is configured or the API request fails.
-- Contains a CDC simulator that chronologically splits records into an initial batch and an incremental batch.
-
-### Transformation and customer analytics
-
-- Filters rows without invoice or customer identifiers and removes non-positive quantities and prices for sales-focused analysis.
-- Standardizes customer IDs, invoice dates, and selected text fields.
-- Computes line revenue in GBP and derives USD, EUR, and MAD amounts using the configured rates.
-- Calculates customer Recency, Frequency, and Monetary (RFM) metrics and assigns rule-based customer segments.
-- Adds a transaction-level suspect flag using IQR-based revenue outliers, product-relative price checks, and same-customer daily invoice velocity.
-
-### Predictive analytics
-
-The optional `predict` mode includes two lightweight analytical components:
-
-- **Revenue forecasting:** Fits a linear regression on historical daily revenue versus ordinal date and forecasts future daily revenue.
-- **Churn-risk heuristic:** Derives a score from RFM recency and frequency scores and exports customers above a configured threshold.
-
-These are baseline approaches intended to demonstrate a workflow. They are not validated financial forecasts or trained churn-classification models.
-
-### Warehouse and BI
-
-- SQLAlchemy models define `dim_date`, `dim_customer`, `dim_product`, and `fact_sales`.
-- PostgreSQL DDL is provided under `sql/postgresql/`.
-- SQL views provide sales-by-country, current customer profile, and flagged-transaction reporting.
-- The Streamlit dashboard visualizes headline revenue/order/customer KPIs, sales by country, RFM segments, and optional prediction CSVs.
-- A Power BI connection and visualization guide is available in `dashboards/powerbi/README.md`.
-
-### Optional cloud code
-
-- The GCP loader contains Google Cloud Storage upload and BigQuery load paths.
-- The BigQuery schema DDL is in `sql/bigquery/init_schema_bq.sql`.
-- An Airflow DAG definition is included under `dags/`; it needs environment-specific path and runtime configuration before it can run outside the original development environment.
-
-## Data flow
-
-1. **Read source data:** `CSVLoader` checks configured raw-data folders, loads supported Excel/CSV files, and downloads the default dataset if no files are found.
-2. **Get FX rates:** `FXFetcher` reads an unexpired cache or requests current rates, then falls back to development rates if needed.
-3. **Clean records:** `DataCleaner` filters and normalizes retail transaction rows.
-4. **Enrich revenue:** `CurrencyTransformer` calculates GBP line revenue and converted monetary columns.
-5. **Derive customer segments:** `RFMSegmenter` aggregates transactions by customer and assigns RFM scores/labels.
-6. **Flag anomalies:** `FraudDetector` adds `Is_Fraud_Suspect` for transaction rows matching one or more rules.
-7. **Validate:** `QualityChecks` checks required columns, non-positive quantities/revenue, future dates, and selected currency integrity.
-8. **Load:** `WarehouseLoader` updates dimensions and appends fact records to PostgreSQL.
-9. **Explore:** SQL views and the Streamlit dashboard expose the warehouse results; prediction outputs can be generated separately.
-
-## Technology stack
-
-| Area | Tools |
+| Layer | Responsibility |
 |---|---|
-| Language and data processing | Python, pandas, NumPy |
-| External API | requests, ExchangeRate-API |
-| Configuration and logging | python-dotenv, pydantic-settings, Loguru |
-| Warehouse access | SQLAlchemy, PostgreSQL, psycopg2 |
-| Analytics | scikit-learn, RFM scoring, rule-based anomaly detection |
-| Dashboard | Streamlit, Plotly |
-| Cloud integration (optional) | Google Cloud Storage, BigQuery |
-| Tests | pytest |
-| Local infrastructure | Docker Compose, PostgreSQL |
-| Workflow definition (optional) | Apache Airflow |
-| Task shortcuts | Make |
+| Ingestion | Loads retail datasets and retrieves exchange rates. |
+| Transformation | Cleans records, calculates revenue, and enriches transactions. |
+| Analytics | Generates customer segments, anomaly flags, and predictive outputs. |
+| Data quality | Checks required fields, invalid values, dates, and currency calculations. |
+| Data warehouse | Stores analytical data in PostgreSQL tables. |
+| Visualization | Presents KPIs, customer segments, and analytical results. |
+| Cloud integration | Provides optional Google Cloud Storage and BigQuery loading paths. |
 
-## Repository layout
+## Key Features
+
+### 1. Automated Data Ingestion
+
+The ingestion layer is implemented in `src/ingestion/`.
+
+- Loads Excel and CSV datasets from supported local directories.
+- Downloads the default Online Retail dataset when no supported local files are found.
+- Combines discovered datasets and removes exact duplicate rows.
+- Retrieves exchange rates through ExchangeRate-API.
+- Caches exchange rates locally to reduce unnecessary API requests.
+
+### 2. Data Cleaning and Transformation
+
+The transformation layer prepares raw records for downstream analytics.
+
+Implemented operations include:
+
+- Removing rows with missing invoice or customer identifiers.
+- Filtering non-positive quantities and unit prices for sales-focused analysis.
+- Removing duplicate records.
+- Standardizing customer identifiers and invoice dates.
+- Normalizing selected text fields.
+- Calculating transaction-line revenue.
+- Generating additional currency-denominated revenue columns.
+
+The transformation logic is organized into reusable Python classes rather than being concentrated in a single script.
+
+### 3. Change Data Capture Simulation
+
+The project includes a batch-based CDC simulator in `src/ingestion/cdc_simulator.py`.
+
+It sorts transactions chronologically and divides the dataset into two batches:
+
+- **Initial batch:** the first 80% of records.
+- **Incremental batch:** the remaining 20%.
+
+Both batches are processed by the pipeline to demonstrate an initial load followed by an incremental batch.
+
+This is a CDC simulation, not a connector that detects actual database changes or captures source-level updates and deletes.
+
+### 4. Multi-Currency Revenue Calculation
+
+The currency transformation module calculates transaction revenue using GBP as the base currency.
+
+For each transaction:
+
+`Total_GBP = Quantity × UnitPrice`
+
+Converted values are calculated as:
+
+`Total_Currency = Total_GBP × ExchangeRate`
+
+The supported output currencies are:
+
+- GBP — British Pound
+- USD — US Dollar
+- EUR — Euro
+- MAD — Moroccan Dirham
+
+The FX fetcher uses cached or retrieved rates and includes fallback development rates.
+
+**Important:** The current implementation uses latest available rates rather than historical exchange rates corresponding to each transaction date.
+
+### 5. Customer Segmentation with RFM Analysis
+
+The RFM module groups purchasing behavior by customer.
+
+| Metric | Description |
+|---|---|
+| Recency | Number of days since the customer's latest purchase, relative to the dataset's reference date. |
+| Frequency | Number of distinct invoices associated with the customer. |
+| Monetary | Total customer spending in GBP. |
+
+Customers receive quantile-based scores that are combined into an RFM score and a descriptive segment.
+
+Current segment labels include:
+
+- Best Customers
+- Loyal Customers
+- Big Spenders
+- Potential Loyalists
+- Lost Customers
+- At Risk
+- Recent Customers
+
+These segments can support customer analysis, retention planning, and marketing decisions.
+
+### 6. Transaction Anomaly Detection
+
+The fraud detection module implements three rule-based screening methods.
+
+**Transaction value outliers**
+
+Flags transactions whose GBP value exceeds a threshold based on the interquartile range:
+
+`Upper Threshold = Q3 + 3 × IQR`
+
+**Product price anomalies**
+
+Flags item prices that exceed twice the observed average price for the corresponding stock code.
+
+**Transaction velocity**
+
+Flags transactions belonging to customers with more than ten distinct invoices on the same calendar day.
+
+The resulting `Is_Fraud_Suspect` field identifies records that match at least one rule.
+
+These rules are intended for exploratory anomaly screening. A flagged transaction is not necessarily fraudulent, and the implementation is not a validated fraud detection model.
+
+### 7. Predictive Analytics
+
+The project includes two baseline analytical components in `src/analytics/predictive.py`.
+
+**Revenue forecasting**
+
+A linear regression model learns the relationship between historical daily revenue and calendar date. It then generates a daily revenue forecast for a future period.
+
+The default forecast horizon is 30 days.
+
+Output:
+
+`data/processed/sales_forecast.csv`
+
+**Customer churn-risk scoring**
+
+The churn-risk component calculates a heuristic score using customer RFM recency and frequency scores. Customers above the configured threshold are included in the high-risk output.
+
+Output:
+
+`data/processed/churn_risk.csv`
+
+These outputs demonstrate predictive analytics workflows but have not been established as validated forecasting or churn-prediction models.
+
+### 8. Data Quality Validation
+
+The quality module checks transformed data before warehouse loading.
+
+Current checks include:
+
+- Null values in critical columns.
+- Non-positive quantities and revenue.
+- Future transaction dates.
+- Selected currency conversion integrity conditions.
+- Duplicate invoice and product combinations, which generate warnings.
+
+Critical failures prevent the normal pipeline from proceeding to warehouse loading.
+
+### 9. Interactive Dashboard
+
+The Streamlit dashboard provides an interface for exploring the warehouse and generated analytical outputs.
+
+Available visualizations include:
+
+- Total revenue in GBP.
+- Total number of orders.
+- Total number of customers.
+- Average order value.
+- Revenue by country.
+- Customer distribution by RFM segment.
+- Sales forecast visualization.
+- High-risk customer tables.
+
+Plotly is used to render interactive charts.
+
+---
+
+## Technology Stack
+
+| Category | Technologies |
+|---|---|
+| Programming language | Python |
+| Data processing | pandas, NumPy |
+| API integration | requests, ExchangeRate-API |
+| Configuration | python-dotenv, Pydantic Settings |
+| Logging | Loguru |
+| Database | PostgreSQL |
+| ORM and database access | SQLAlchemy, psycopg2 |
+| Analytics | scikit-learn |
+| Dashboard | Streamlit, Plotly |
+| Cloud services | Google Cloud Storage, BigQuery |
+| Testing | pytest |
+| Containerization | Docker, Docker Compose |
+| Workflow orchestration | Apache Airflow integration |
+| Automation | GNU Make |
+
+## Project Structure
 
 ```text
 FinanceETL/
-├── config/                 # Settings and logging setup
+├── config/
+│   ├── logging_config.py
+│   └── settings.py
 ├── data/
-│   ├── raw/                # Retail source files
-│   └── processed/          # FX cache and prediction outputs
+│   ├── raw/
+│   └── processed/
 ├── dags/
-│   └── finance_etl_dag.py  # Airflow DAG (requires local configuration)
+│   └── finance_etl_dag.py
 ├── dashboards/
-│   ├── app.py              # Streamlit + Plotly dashboard
-│   └── powerbi/README.md   # Power BI setup guide
-├── gcp/                    # Cloud deployment notes
+│   ├── app.py
+│   └── powerbi/
+│       └── README.md
+├── gcp/
+│   └── README.md
 ├── sql/
-│   ├── postgresql/         # PostgreSQL tables and views
-│   └── bigquery/           # BigQuery schema
+│   ├── postgresql/
+│   │   ├── init_schema.sql
+│   │   └── views.sql
+│   └── bigquery/
+│       └── init_schema_bq.sql
 ├── src/
-│   ├── analytics/          # Revenue forecast and churn-risk score
-│   ├── ingestion/          # Source loading, FX retrieval, CDC simulation
-│   ├── quality/            # Data quality checks
-│   ├── transformation/     # Cleaning, currency, RFM, anomaly detection
-│   └── warehouse/          # SQLAlchemy models and database/cloud loaders
-├── tests/                  # Transformation tests
-├── main.py                 # CLI orchestrator
-├── Makefile                # Common developer commands
-├── requirements.txt        # Python dependencies
-├── .env.example            # Example environment configuration
-└── FINAL_REPORT.md         # Project abstract and presentation outline
+│   ├── analytics/
+│   │   └── predictive.py
+│   ├── ingestion/
+│   │   ├── csv_loader.py
+│   │   ├── fx_api.py
+│   │   └── cdc_simulator.py
+│   ├── transformation/
+│   │   ├── cleaner.py
+│   │   ├── currency.py
+│   │   ├── rfm.py
+│   │   └── fraud.py
+│   ├── quality/
+│   │   └── checks.py
+│   └── warehouse/
+│       ├── models.py
+│       ├── loader.py
+│       └── gcp_loader.py
+├── tests/
+│   └── test_transformation.py
+├── main.py
+├── Makefile
+├── docker-compose.yml
+├── requirements.txt
+├── .env.example
+├── FINAL_REPORT.md
+└── README.md
 ```
 
-## Quick start
+## Data Pipeline
+
+The main orchestrator is `main.py`.
+
+### Pipeline execution sequence
+
+1. **Ingestion:** Load the retail dataset and retrieve exchange rates.
+2. **Cleaning:** Remove invalid records, standardize fields, and eliminate duplicates.
+3. **Transformation:** Calculate revenue in multiple currencies.
+4. **Customer analytics:** Generate RFM metrics and customer segments.
+5. **Anomaly screening:** Add transaction-level suspect flags.
+6. **Validation:** Run data quality checks.
+7. **Warehouse loading:** Load dimension and fact records into PostgreSQL.
+8. **Reporting:** Query the warehouse through SQL views and the dashboard.
+9. **Predictive analytics:** Optionally generate sales forecasts and churn-risk reports.
+
+## Data Warehouse Design
+
+The warehouse uses a dimensional modeling approach with separate dimension tables and a transaction fact table.
+
+### Dimension tables
+
+**`dim_date`**
+
+Contains calendar attributes:
+
+- Date key
+- Full date
+- Day name
+- Month name and number
+- Quarter
+- Year
+- Weekend indicator
+
+**`dim_customer`**
+
+Stores customer attributes and current RFM profiles:
+
+- Customer key
+- Country
+- RFM segment
+- RFM score
+- Validity timestamps
+- Current-record indicator
+
+**`dim_product`**
+
+Stores product information:
+
+- Product key
+- Description
+- Unit price in GBP
+
+### Fact table
+
+**`fact_sales`**
+
+Stores transaction-line measures:
+
+- Sales identifier
+- Invoice number and date
+- Customer key
+- Product key
+- Quantity
+- Unit price
+- Revenue in GBP, USD, EUR, and MAD
+- Suspect transaction indicator
+
+### Analytical SQL views
+
+The PostgreSQL views in `sql/postgresql/views.sql` include:
+
+| View | Purpose |
+|---|---|
+| `v_sales_by_country` | Summarizes orders and revenue by country. |
+| `v_customer_profiles` | Exposes current customer segmentation information. |
+| `v_fraud_report` | Lists transactions flagged by the anomaly rules. |
+
+The warehouse supports downstream analysis through SQL clients and BI tools.
+
+## Analytics and Business Intelligence
+
+The platform supports several business questions.
+
+**Revenue analysis**
+- How much revenue was generated?
+- Which countries contribute the most revenue?
+- How does order value vary?
+
+**Customer analytics**
+- Which customers have high RFM scores?
+- Which customers may require retention campaigns?
+- How are customers distributed across segments?
+
+**Transaction monitoring**
+- Which transactions have unusually high values?
+- Which product prices deviate from observed averages?
+- Which customers show unusually high daily invoice activity?
+
+**Predictive analysis**
+- What does a baseline future revenue trend look like?
+- Which customers receive high heuristic churn-risk scores?
+
+---
+
+## Installation and Setup
 
 ### Prerequisites
 
-- Python version compatible with the dependencies (Python 3.10+ is a reasonable starting point; verify your local environment).
-- Docker and Docker Compose for the PostgreSQL container.
-- GNU Make for the provided shortcuts, or run the corresponding commands manually.
-- An ExchangeRate-API key for live FX rates. Without one, the code uses configured fallback rates.
+Install the following before starting:
+
+- Python and pip.
+- Docker with Docker Compose.
+- Git.
+- GNU Make, if you want to use the provided Makefile shortcuts.
+
+Python 3.10 or later is a reasonable starting point; verify compatibility with the installed dependencies.
 
 ### 1. Clone the repository
 
@@ -164,7 +449,7 @@ git clone https://github.com/adamfutur/FinanceETL.git
 cd FinanceETL
 ```
 
-### 2. Create and activate a virtual environment
+### 2. Create a virtual environment
 
 Linux/macOS:
 
@@ -180,228 +465,237 @@ python -m venv .venv
 .venv\Scripts\Activate.ps1
 ```
 
-### 3. Install dependencies and create local configuration
+### 3. Install dependencies
 
 ```bash
 python -m pip install --upgrade pip
 pip install -r requirements.txt
+```
+
+### 4. Configure environment variables
+
+Linux/macOS:
+
+```bash
 cp .env.example .env
 ```
 
-On Windows, copy the configuration with:
+Windows PowerShell:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Edit `.env` and add your API key if you want live FX rates. Do not commit `.env` or service-account files.
+Update `.env` with the relevant local settings and API credentials.
 
-### 4. Start PostgreSQL
+### 5. Start PostgreSQL
 
 ```bash
 docker-compose up -d
 ```
 
-The supplied Compose file exposes PostgreSQL on port `5432` and creates the `finance_db` database. The default credentials are for local development only; change them before any shared or deployed use.
+Check that the container is running:
 
-### 5. Run the full ETL
+```bash
+docker-compose ps
+```
+
+The included Compose configuration exposes PostgreSQL on port `5432` and creates the `finance_db` database.
+
+The default credentials are intended for local development only.
+
+### 6. Execute the ETL pipeline
 
 ```bash
 python main.py --step full
 ```
 
-Or use the Makefile shortcut:
+Alternatively, use:
 
 ```bash
 make etl
 ```
 
-The first full run initializes the SQLAlchemy schema and loads dimension and fact data. Review the logs and quality-check output to confirm completion.
+The full mode runs ingestion, transformations, quality validation, and warehouse loading.
+
+---
 
 ## Configuration
 
-Settings are defined in `config/settings.py` and `.env.example`.
+Environment settings are documented in `.env.example` and defined in `config/settings.py`.
 
-| Variable | Purpose | Example |
-|---|---|---|
-| `EXCHANGE_RATE_API_KEY` | API credential; fallback rates are used if absent/invalid | Set your own key |
-| `BASE_CURRENCY` | Base used by FX request | `GBP` |
-| `POSTGRES_USER` | PostgreSQL user | `postgres` |
-| `POSTGRES_PASSWORD` | Local database password | `postgres` for local development only |
-| `POSTGRES_DB` | Database name | `finance_db` |
-| `POSTGRES_HOST` | Database hostname | `localhost` from host machine |
-| `POSTGRES_PORT` | Database port | `5432` |
-| `GCP_PROJECT_ID` | Google Cloud project (optional) | Your project ID |
-| `GCP_DATASET_ID` | BigQuery dataset (optional) | `finance_dw` |
-| `GCP_BUCKET_NAME` | GCS bucket for raw-data upload (optional) | Your bucket |
-| `GCP_SERVICE_ACCOUNT_JSON` | Service-account JSON path read by the current GCP loader | Local credential file path |
-| `LOG_LEVEL` | Intended logging level setting | `INFO` |
-
-Note: the current GCP loader reads `GCP_SERVICE_ACCOUNT_JSON` directly from the environment. Set that variable when configuring service-account authentication; `GOOGLE_APPLICATION_CREDENTIALS` alone is not used by that loader's current credential-path check.
-
-## Run the pipeline
-
-The command-line interface is defined in `main.py`.
-
-| Command | Purpose |
+| Variable | Description |
 |---|---|
-| `python main.py --step full` or `make etl` | Run ingestion, transformations, checks, and warehouse load |
-| `python main.py --step cdc` or `make cdc` | Process the chronological initial/incremental batch simulation |
-| `python main.py --step predict` or `make predict` | Generate revenue forecasts and churn-risk CSVs |
-| `python main.py --step dashboard` or `make dashboard` | Launch Streamlit |
-| `python main.py --step ingest` | Load source data and fetch FX rates |
-| `make up` / `make down` | Start / stop the local PostgreSQL container |
-| `make test` | **Currently wired to `main.py --step test`, but that CLI option is not defined. Use `pytest` directly until the Makefile/CLI target is fixed.** |
+| `EXCHANGE_RATE_API_KEY` | ExchangeRate-API key. |
+| `BASE_CURRENCY` | Base currency used for exchange rate retrieval; defaults to GBP. |
+| `POSTGRES_USER` | PostgreSQL username. |
+| `POSTGRES_PASSWORD` | PostgreSQL password. |
+| `POSTGRES_DB` | Database name. |
+| `POSTGRES_HOST` | Database hostname. |
+| `POSTGRES_PORT` | Database port. |
+| `GCP_PROJECT_ID` | Google Cloud project ID. |
+| `GCP_DATASET_ID` | BigQuery dataset ID. |
+| `GCP_BUCKET_NAME` | Google Cloud Storage bucket name. |
+| `GCP_SERVICE_ACCOUNT_JSON` | Service-account JSON path read by the current GCP loader. |
+| `LOG_LEVEL` | Intended application logging level. |
 
-Additional caution: `transform` and `load` are accepted as CLI choices, but the current orchestrator reloads source data for those modes rather than consuming a persisted intermediate dataset. The code should be updated before treating them as independent, staged production jobs.
+The current GCP loader reads `GCP_SERVICE_ACCOUNT_JSON` directly from the environment. Follow that variable when configuring its credential path.
 
-### CDC behavior
+**Security:** Never commit `.env`, service-account JSON files, passwords, or API keys to GitHub.
 
-The CDC simulator sorts input records by `InvoiceDate`, assigns the first 80% to an initial batch and the remaining 20% to an incremental batch, and labels both batches as `INSERT`. It is useful for demonstrating batch partitioning, but it does not detect real source-level inserts/updates/deletes.
+## Running the Application
 
-## Analytics and warehouse
+### Full ETL pipeline
 
-### Multi-currency measures
-
-The transformer calculates line revenue as:
-
-```text
-Total_GBP = Quantity × UnitPrice
-Total_<currency> = Total_GBP × exchange_rate
+```bash
+python main.py --step full
 ```
 
-The configured base is GBP. The current FX integration retrieves the latest available rates rather than historical rate data for each transaction date, so converted values are illustrative analytics rather than auditable historical accounting valuations. For accounting-quality reporting, use rates matched to transaction dates and clearly specify rate conventions.
+### CDC simulation
 
-### RFM customer segmentation
+```bash
+python main.py --step cdc
+```
 
-For each customer, the pipeline calculates:
+This runs the initial and incremental batch simulation.
 
-- **Recency:** number of days between the customer's most recent invoice and the dataset's latest invoice date plus one day.
-- **Frequency:** number of distinct invoices.
-- **Monetary:** sum of GBP line revenue.
+### Predictive analytics
 
-Quantile-based scores are combined into a segment score and labels including Best Customers, Loyal Customers, Big Spenders, Potential Loyalists, Lost Customers, At Risk, and Recent Customers.
+```bash
+python main.py --step predict
+```
 
-### Rule-based anomaly flags
+This generates the sales forecast and churn-risk CSV files under `data/processed/`.
 
-A transaction is flagged if it matches one or more of the following current rules:
+### Launch the dashboard
 
-- GBP transaction value exceeds the upper IQR-based limit (Q3 + 3 × IQR).
-- Unit price is more than twice the observed mean price for the same stock code.
-- Customer has more than ten distinct invoices on the same calendar day.
+```bash
+python main.py --step dashboard
+```
 
-These checks are explainable heuristics. They can flag legitimate unusual activity and should not be interpreted as proof of fraud.
-
-### Predictive outputs
-
-The prediction mode writes:
-
-- `data/processed/sales_forecast.csv`
-- `data/processed/churn_risk.csv`
-
-Revenue is forecast using linear regression on daily revenue and date ordinal. The churn-risk score is a heuristic derived from RFM recency and frequency scores. These outputs are suitable for demonstrations, not validated forecasts or calibrated risk estimates.
-
-### Warehouse tables and views
-
-The SQLAlchemy model and PostgreSQL schema define:
-
-- `dim_date`: date attributes such as day, month, quarter, year, weekend.
-- `dim_customer`: customer country and latest RFM segment/score.
-- `dim_product`: product description and unit price.
-- `fact_sales`: invoice-line measures in GBP, USD, EUR, and MAD plus suspect flag.
-
-SQL views in `sql/postgresql/views.sql` include:
-
-- `v_sales_by_country`
-- `v_customer_profiles`
-- `v_fraud_report`
-
-The current loader appends fact rows and refreshes the customer dimension. Re-running the full pipeline can therefore duplicate fact rows; use a fresh local database for a clean demonstration, or implement a stable fact key and idempotent upsert logic before relying on repeatable production runs.
-
-## Dashboard
-
-Launch the dashboard after loading data into PostgreSQL:
+Alternatively:
 
 ```bash
 make dashboard
 ```
 
-The Streamlit dashboard uses Plotly and currently includes:
+The dashboard expects the warehouse to be populated and uses a local PostgreSQL connection configured directly in `dashboards/app.py`.
 
-- Total revenue (GBP)
-- Distinct invoice count
-- Distinct customer count
-- Average order value
-- Revenue by country
-- Customer RFM segment counts
-- Optional sales forecast and churn-risk views when prediction CSVs are present
+### Stop PostgreSQL
 
-The dashboard connects using a hard-coded local development PostgreSQL URL in `dashboards/app.py`. Update it to read environment-based connection settings before deploying outside a local development environment.
+```bash
+docker-compose down
+```
 
-## Tests and data quality
+This stops the container while preserving its named database volume.
 
-Run the tests directly:
+## Data Quality and Testing
+
+Run the tests directly using pytest:
 
 ```bash
 pytest
 ```
 
-The repository currently includes tests covering cleaning, currency conversion, RFM segmentation, and one fraud-flagging case. The pipeline's quality checks verify critical nulls, non-positive quantities/revenue, future dates, and one currency-conversion condition; duplicate invoice/product combinations produce warnings rather than automatic failure.
+The existing tests cover:
 
-Test coverage is a starting point and does not yet constitute full end-to-end validation of database loads, API failures, CDC retries, or cloud uploads.
+- Removal of negative-quantity transactions.
+- Currency revenue calculations.
+- RFM segment generation.
+- A transaction anomaly detection case.
 
-## Optional Google Cloud integration
+These tests provide an initial level of verification for transformation logic.
 
-The repository includes a GCP loader with code paths for uploading raw data to Google Cloud Storage and loading tables into BigQuery.
+**Note:** The current `make test` target calls `main.py --step test`, but `test` is not among the supported CLI modes. Use `pytest` directly until that shortcut is corrected.
 
-1. Create a Google Cloud project and enable the required services.
-2. Create a service account with minimum required permissions.
-3. Set `GCP_PROJECT_ID`, `GCP_DATASET_ID`, `GCP_BUCKET_NAME`, and `GCP_SERVICE_ACCOUNT_JSON` in your local environment.
-4. Configure the bucket and dataset, and review `sql/bigquery/init_schema_bq.sql` before running cloud loads.
+Additional integration tests would be useful for database loading, API failures, repeated ETL execution, and cloud uploads.
 
-The current BigQuery DDL uses the placeholder project `your_project`. Replace it with your project and dataset names before execution. Cloud schema/loading paths should be tested against your target BigQuery dataset: the current loader's payload columns are not a full, explicit mapping of every PostgreSQL warehouse table.
+## Google Cloud Integration
 
-Do not commit service-account JSON files or production credentials.
+Optional cloud functionality is implemented in `src/warehouse/gcp_loader.py`.
 
-## Airflow orchestration
+### Google Cloud Storage
 
-A DAG definition is included at `dags/finance_etl_dag.py`, with the intended task order:
+The loader includes a method to upload a raw dataset to a configured Google Cloud Storage bucket.
 
-`ingest_data → transform_and_analyze → load_to_data_warehouse`
+### BigQuery
 
-**The current DAG requires changes before use:** its Bash commands contain a machine-specific Windows path (`C:/Users/MSI/Desktop/FinanceETLHub`), it uses task modes that currently do not share persisted intermediate output, and Airflow is not listed in `requirements.txt`. Configure the project path and Python environment for your Airflow worker, install a compatible Airflow version separately, and validate task behavior before scheduling.
+The loader includes methods for uploading analytical data to BigQuery. A schema definition is provided in:
 
-## Current limitations and engineering notes
+`sql/bigquery/init_schema_bq.sql`
 
-- **CDC is simulated:** there is no source log/offset-based capture of actual updates or deletes.
-- **Repeated runs are not idempotent:** fact loads append rows without a demonstrated stable-key deduplication step.
-- **FX rates are latest-rate based:** the project does not currently demonstrate transaction-date historical exchange rates.
-- **Anomaly detection is rule-based:** flags are for review and have not been validated as fraud classifications.
-- **Forecasting is a baseline:** the linear trend model does not demonstrate holdout evaluation, uncertainty intervals, or seasonality modeling.
-- **Cloud integration is optional and needs deployment validation:** credentials, dataset names, IAM, and schema mapping must match the target environment.
-- **Airflow configuration is environment-specific:** the committed DAG contains a local Windows path.
-- **Local database credentials are development defaults:** change them for any shared deployment.
-- **The input loader contains a hard-coded extra Windows data directory:** `src/ingestion/csv_loader.py` should be configured through environment variables or removed for portable execution.
+Before using the cloud integration:
 
-These limitations are useful next engineering milestones and are documented here so users can evaluate the project accurately.
+1. Create a Google Cloud project.
+2. Enable the required APIs.
+3. Configure a storage bucket and BigQuery dataset.
+4. Create a service account with appropriate permissions.
+5. Set the GCP environment variables.
+6. Replace the placeholder project and dataset references in the BigQuery DDL.
+7. Validate the warehouse schema mappings and load behavior against your environment.
 
-## Future improvements
+The cloud integration is optional and requires environment-specific configuration and testing. It should not be assumed to be a fully deployed production data platform.
 
-- Make data loading idempotent with a stable transaction-line key and upsert/merge logic.
-- Introduce persistent CDC watermarks and real update/delete semantics.
-- Add historical FX rates keyed by transaction date.
-- Externalize paths and dashboard/database URLs into configuration.
-- Repair CLI modes and Makefile test wiring; persist intermediate artifacts if staged steps are intended.
-- Add integration tests with a disposable PostgreSQL instance and mocked FX API responses.
-- Add CI with linting, tests, and dependency/security checks.
-- Improve cloud table mapping, configuration validation, and retry/error reporting.
-- Make the Airflow DAG portable and deployable through a reproducible environment.
+## Apache Airflow
+
+The repository includes a DAG definition at:
+
+`dags/finance_etl_dag.py`
+
+The intended workflow is:
+
+```text
+ingest_data
+     |
+     v
+transform_and_analyze
+     |
+     v
+load_to_data_warehouse
+```
+
+The DAG is intended to demonstrate task dependencies and scheduled pipeline execution.
+
+**Configuration required:** The current DAG contains a machine-specific Windows path. It also uses separate pipeline modes that do not currently exchange persisted intermediate datasets. Update the paths, Python environment, and task design before running it in an Airflow deployment.
+
+Airflow must be installed and configured separately; it is not included in `requirements.txt`.
+
+## Known Limitations
+
+This project is a data engineering portfolio project and has several areas for further improvement.
+
+- **Simulated CDC:** Batch partitioning is implemented, but real inserts, updates, and deletes are not captured from a source change log.
+- **Repeated loads:** Fact records are appended without a demonstrated idempotent transaction-key strategy. Repeated runs can create duplicate facts.
+- **Historical currency rates:** The pipeline uses latest available rates rather than transaction-date exchange rates.
+- **Rule-based anomaly detection:** The flags are screening heuristics, not confirmed fraud labels.
+- **Baseline forecasting:** The linear regression approach does not demonstrate holdout evaluation, seasonal modeling, or prediction intervals.
+- **Cloud deployment:** GCP credentials, schema mappings, IAM permissions, and infrastructure need environment-specific validation.
+- **Airflow portability:** The current DAG includes a local machine path and needs deployment changes.
+- **Local database configuration:** Default credentials are for development and should not be reused in a deployed environment.
+- **Hard-coded ingestion path:** The loader contains an additional Windows directory that should be removed or made configurable for portable execution.
+- **Test shortcut:** The Makefile test command needs correction to invoke pytest.
+
+## Future Improvements
+
+Potential next steps include:
+
+- Implement idempotent fact loading and stable transaction-line identifiers.
+- Add real CDC semantics and persistent incremental-load checkpoints.
+- Use historical FX rates matched to transaction dates.
+- Improve configuration management and remove hard-coded local paths.
+- Add integration tests for PostgreSQL and cloud loading.
+- Add CI workflows for tests, linting, and dependency checks.
+- Evaluate forecasting models using time-based holdout data and suitable error metrics.
+- Validate anomaly detection against labeled data where available.
+- Make the Airflow DAG portable and ensure tasks exchange reliable intermediate data.
+- Improve cloud schema mapping, retry handling, and operational monitoring.
 
 ## License
 
-See [LICENSE](LICENSE) for the license terms.
+See the [LICENSE](LICENSE) file for license terms.
 
 ---
 
-**Author:** Adam IMLOUL  
+**Author:** Adam IMLOUL
+
 **Repository:** [github.com/adamfutur/FinanceETL](https://github.com/adamfutur/FinanceETL)
