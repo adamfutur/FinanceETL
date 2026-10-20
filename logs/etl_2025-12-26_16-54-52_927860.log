@@ -1,0 +1,26 @@
+2025-12-26 16:54:52.929 | INFO     | config.logging_config:setup_logging:25 - Logging setup complete.
+2025-12-26 16:54:52.931 | INFO     | __main__:main:28 - Starting ETL Pipeline in 'full' mode...
+2025-12-26 16:54:52.931 | INFO     | __main__:main:35 - >>> Step 1: Data Ingestion
+2025-12-26 16:54:52.931 | INFO     | src.ingestion.csv_loader:_load_from_dir:45 - Loading Excel: online_retail.xlsx
+2025-12-26 16:55:25.481 | INFO     | src.ingestion.csv_loader:_load_from_dir:45 - Loading Excel: Online Retail.xlsx
+2025-12-26 16:55:58.602 | INFO     | src.ingestion.csv_loader:load_all_files:77 - Deduplication: Removed 547177 duplicate rows.
+2025-12-26 16:55:58.630 | INFO     | src.ingestion.csv_loader:get_data:84 - Total processed dataset: 536641 rows.
+2025-12-26 16:55:58.633 | INFO     | src.ingestion.fx_api:get_rates:23 - Using cached FX rates.
+2025-12-26 16:55:58.633 | WARNING  | src.warehouse.gcp_loader:__init__:22 - GCP Credentials not found. Cloud features will be skipped.
+2025-12-26 16:55:59.746 | INFO     | src.transformation.cleaner:clean:43 - Cleaning complete. Rows: 536641 -> 392692 (Dropped 143949)
+2025-12-26 16:55:59.981 | INFO     | src.transformation.currency:transform:27 - Currency transformation applied for: ['USD', 'EUR', 'MAD', 'GBP']
+2025-12-26 16:56:00.573 | INFO     | src.transformation.rfm:generate_segments:83 - RFM Segmentation complete.
+2025-12-26 16:56:00.623 | INFO     | src.transformation.fraud:detect:16 - Starting Advanced Fraud Detection Analysis...
+2025-12-26 16:56:00.936 | INFO     | src.transformation.fraud:detect:45 - Fraud Analysis Complete: Flagged 24645 suspicious transactions.
+2025-12-26 16:56:00.937 | INFO     | src.transformation.fraud:detect:46 -  - Value Outliers (> 64.35 GBP): 20852
+2025-12-26 16:56:00.938 | INFO     | src.transformation.fraud:detect:47 -  - Price Anomalies: 3241
+2025-12-26 16:56:00.939 | INFO     | src.transformation.fraud:detect:48 -  - High Velocity Invoices: 675
+2025-12-26 16:56:00.939 | INFO     | src.quality.checks:run_checks:13 - Running Advanced Data Quality Suite...
+2025-12-26 16:56:01.042 | WARNING  | src.quality.checks:run_checks:30 - DQ Warning: Found 4851 duplicate product entries within invoices. This might be normal but warrants review.
+2025-12-26 16:56:01.046 | INFO     | src.quality.checks:run_checks:55 - ✅ All critical Data Quality Checks Passed.
+2025-12-26 16:56:01.046 | INFO     | __main__:process_data:126 - >>> Loading to Data Warehouse
+2025-12-26 16:56:01.101 | WARNING  | src.warehouse.gcp_loader:__init__:22 - GCP Credentials not found. Cloud features will be skipped.
+2025-12-26 16:56:01.102 | INFO     | src.warehouse.loader:init_db:17 - Initializing Data Warehouse Schema...
+2025-12-26 16:56:01.149 | INFO     | src.warehouse.loader:_load_dates:71 - Populating Date Dimension...
+2025-12-26 16:56:01.188 | INFO     | src.warehouse.loader:load_dimensions:30 - Syncing DimProduct...
+2025-12-26 16:56:01.246 | INFO     | src.warehouse.loader:load_dimensions:44 - Syncing DimCustomer with RFM profiles...

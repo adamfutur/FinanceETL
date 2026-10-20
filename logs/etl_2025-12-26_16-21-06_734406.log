@@ -1,0 +1,30 @@
+2025-12-26 16:21:06.736 | INFO     | config.logging_config:setup_logging:25 - Logging setup complete.
+2025-12-26 16:21:06.738 | INFO     | __main__:main:26 - Starting ETL Pipeline in 'cdc' mode...
+2025-12-26 16:21:06.738 | INFO     | __main__:main:33 - >>> Step 1: Data Ingestion
+2025-12-26 16:21:06.739 | INFO     | src.ingestion.csv_loader:load_and_convert:44 - CSV version already exists at C:\Users\MSI\Desktop\FinanceETLHub\data\raw\online_retail.csv. Loading...
+2025-12-26 16:21:07.296 | INFO     | src.ingestion.csv_loader:get_data:56 - Loaded dataset with 541909 rows.
+2025-12-26 16:21:07.297 | INFO     | src.ingestion.fx_api:get_rates:23 - Using cached FX rates.
+2025-12-26 16:21:07.297 | INFO     | __main__:main:46 - >>> Simulating Change Data Capture (CDC)
+2025-12-26 16:21:07.457 | INFO     | src.ingestion.cdc_simulator:get_initial_load:28 - Generated initial load batch with 433527 records.
+2025-12-26 16:21:07.529 | INFO     | src.ingestion.cdc_simulator:get_incremental_load:42 - Generated incremental batch with 108382 records.
+2025-12-26 16:21:07.537 | INFO     | __main__:main:52 - Processing Initial Batch...
+2025-12-26 16:21:08.267 | INFO     | src.transformation.cleaner:clean:43 - Cleaning complete. Rows: 433527 -> 314267 (Dropped 119260)
+2025-12-26 16:21:08.391 | INFO     | src.transformation.currency:transform:27 - Currency transformation applied for: ['USD', 'EUR', 'MAD', 'GBP']
+2025-12-26 16:21:08.792 | INFO     | src.transformation.rfm:generate_segments:83 - RFM Segmentation complete.
+2025-12-26 16:21:08.837 | INFO     | src.transformation.fraud:detect:16 - Starting Advanced Fraud Detection Analysis...
+2025-12-26 16:21:09.064 | INFO     | src.transformation.fraud:detect:45 - Fraud Analysis Complete: Flagged 19484 suspicious transactions.
+2025-12-26 16:21:09.065 | INFO     | src.transformation.fraud:detect:46 -  - Value Outliers (> 64.08 GBP): 17405
+2025-12-26 16:21:09.065 | INFO     | src.transformation.fraud:detect:47 -  - Price Anomalies: 1854
+2025-12-26 16:21:09.065 | INFO     | src.transformation.fraud:detect:48 -  - High Velocity Invoices: 309
+2025-12-26 16:21:09.066 | INFO     | src.quality.checks:run_checks:13 - Running Advanced Data Quality Suite...
+2025-12-26 16:21:09.157 | WARNING  | src.quality.checks:run_checks:30 - DQ Warning: Found 3259 duplicate product entries within invoices. This might be normal but warrants review.
+2025-12-26 16:21:09.160 | INFO     | src.quality.checks:run_checks:55 - ✅ All critical Data Quality Checks Passed.
+2025-12-26 16:21:09.161 | INFO     | __main__:process_data:96 - >>> Loading to Data Warehouse
+2025-12-26 16:21:09.209 | INFO     | src.warehouse.loader:init_db:17 - Initializing Data Warehouse Schema...
+2025-12-26 16:21:09.250 | INFO     | src.warehouse.loader:_load_dates:71 - Populating Date Dimension...
+2025-12-26 16:21:09.305 | INFO     | src.warehouse.loader:_load_dates:94 - Inserted 337 days into dim_date.
+2025-12-26 16:21:09.306 | INFO     | src.warehouse.loader:load_dimensions:30 - Syncing DimProduct...
+2025-12-26 16:21:09.359 | INFO     | src.warehouse.loader:load_dimensions:44 - Syncing DimCustomer with RFM profiles...
+2025-12-26 16:31:24.702 | CRITICAL | __main__:process_data:105 - Warehouse load failed: (psycopg2.OperationalError) could not receive data from server: Software caused connection abort (0x00002745/10053)
+
+(Background on this error at: https://sqlalche.me/e/20/e3q8)

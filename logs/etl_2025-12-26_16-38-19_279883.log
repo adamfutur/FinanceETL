@@ -1,0 +1,22 @@
+2025-12-26 16:38:19.281 | INFO     | config.logging_config:setup_logging:25 - Logging setup complete.
+2025-12-26 16:38:19.282 | INFO     | __main__:main:28 - Starting ETL Pipeline in 'predict' mode...
+2025-12-26 16:38:19.282 | INFO     | src.ingestion.csv_loader:load_and_convert:44 - CSV version already exists at C:\Users\MSI\Desktop\FinanceETLHub\data\raw\online_retail.csv. Loading...
+2025-12-26 16:38:19.840 | INFO     | src.ingestion.csv_loader:get_data:56 - Loaded dataset with 541909 rows.
+2025-12-26 16:38:19.842 | INFO     | src.ingestion.fx_api:get_rates:23 - Using cached FX rates.
+2025-12-26 16:38:20.707 | INFO     | src.transformation.cleaner:clean:43 - Cleaning complete. Rows: 541909 -> 392692 (Dropped 149217)
+2025-12-26 16:38:20.899 | INFO     | src.transformation.currency:transform:27 - Currency transformation applied for: ['USD', 'EUR', 'MAD', 'GBP']
+2025-12-26 16:38:21.389 | INFO     | src.transformation.rfm:generate_segments:83 - RFM Segmentation complete.
+2025-12-26 16:38:21.449 | INFO     | src.transformation.fraud:detect:16 - Starting Advanced Fraud Detection Analysis...
+2025-12-26 16:38:21.740 | INFO     | src.transformation.fraud:detect:45 - Fraud Analysis Complete: Flagged 24645 suspicious transactions.
+2025-12-26 16:38:21.742 | INFO     | src.transformation.fraud:detect:46 -  - Value Outliers (> 64.35 GBP): 20852
+2025-12-26 16:38:21.743 | INFO     | src.transformation.fraud:detect:47 -  - Price Anomalies: 3241
+2025-12-26 16:38:21.743 | INFO     | src.transformation.fraud:detect:48 -  - High Velocity Invoices: 675
+2025-12-26 16:38:21.745 | INFO     | src.quality.checks:run_checks:13 - Running Advanced Data Quality Suite...
+2025-12-26 16:38:21.872 | WARNING  | src.quality.checks:run_checks:30 - DQ Warning: Found 4851 duplicate product entries within invoices. This might be normal but warrants review.
+2025-12-26 16:38:21.877 | INFO     | src.quality.checks:run_checks:55 - ✅ All critical Data Quality Checks Passed.
+2025-12-26 16:38:22.030 | INFO     | __main__:main:83 - >>> Step 4: AI Predictive Analytics
+2025-12-26 16:38:22.030 | INFO     | src.analytics.predictive:forecast_revenue:15 - Generating AI revenue forecast for the next 30 days...
+2025-12-26 16:38:22.144 | SUCCESS  | src.analytics.predictive:forecast_revenue:42 - Sales forecast generated successfully.
+2025-12-26 16:38:22.144 | INFO     | src.analytics.predictive:identify_high_risk_customers:51 - Analyzing customer churn risk...
+2025-12-26 16:38:22.151 | INFO     | src.analytics.predictive:identify_high_risk_customers:64 - Identified 903 customers at high risk of churn.
+2025-12-26 16:38:22.173 | SUCCESS  | __main__:main:98 - Predictive insights saved to data/processed/

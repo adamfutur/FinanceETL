@@ -1,0 +1,35 @@
+2025-12-26 16:30:01.829 | INFO     | config.logging_config:setup_logging:25 - Logging setup complete.
+2025-12-26 16:30:01.831 | INFO     | __main__:main:26 - Starting ETL Pipeline in 'full' mode...
+2025-12-26 16:30:01.831 | INFO     | __main__:main:33 - >>> Step 1: Data Ingestion
+2025-12-26 16:30:01.832 | INFO     | src.ingestion.csv_loader:load_and_convert:44 - CSV version already exists at C:\Users\MSI\Desktop\FinanceETLHub\data\raw\online_retail.csv. Loading...
+2025-12-26 16:30:02.360 | INFO     | src.ingestion.csv_loader:get_data:56 - Loaded dataset with 541909 rows.
+2025-12-26 16:30:02.361 | INFO     | src.ingestion.fx_api:get_rates:23 - Using cached FX rates.
+2025-12-26 16:30:03.449 | INFO     | src.transformation.cleaner:clean:43 - Cleaning complete. Rows: 541909 -> 392692 (Dropped 149217)
+2025-12-26 16:30:03.659 | INFO     | src.transformation.currency:transform:27 - Currency transformation applied for: ['USD', 'EUR', 'MAD', 'GBP']
+2025-12-26 16:30:04.213 | INFO     | src.transformation.rfm:generate_segments:83 - RFM Segmentation complete.
+2025-12-26 16:30:04.290 | INFO     | src.transformation.fraud:detect:16 - Starting Advanced Fraud Detection Analysis...
+2025-12-26 16:30:04.647 | INFO     | src.transformation.fraud:detect:45 - Fraud Analysis Complete: Flagged 24645 suspicious transactions.
+2025-12-26 16:30:04.648 | INFO     | src.transformation.fraud:detect:46 -  - Value Outliers (> 64.35 GBP): 20852
+2025-12-26 16:30:04.648 | INFO     | src.transformation.fraud:detect:47 -  - Price Anomalies: 3241
+2025-12-26 16:30:04.649 | INFO     | src.transformation.fraud:detect:48 -  - High Velocity Invoices: 675
+2025-12-26 16:30:04.650 | INFO     | src.quality.checks:run_checks:13 - Running Advanced Data Quality Suite...
+2025-12-26 16:30:04.766 | WARNING  | src.quality.checks:run_checks:30 - DQ Warning: Found 4851 duplicate product entries within invoices. This might be normal but warrants review.
+2025-12-26 16:30:04.771 | INFO     | src.quality.checks:run_checks:55 - ✅ All critical Data Quality Checks Passed.
+2025-12-26 16:30:04.772 | INFO     | __main__:process_data:96 - >>> Loading to Data Warehouse
+2025-12-26 16:30:04.832 | INFO     | src.warehouse.loader:init_db:17 - Initializing Data Warehouse Schema...
+2025-12-26 16:30:04.879 | INFO     | src.warehouse.loader:_load_dates:71 - Populating Date Dimension...
+2025-12-26 16:30:04.941 | INFO     | src.warehouse.loader:_load_dates:94 - Inserted 37 days into dim_date.
+2025-12-26 16:30:04.942 | INFO     | src.warehouse.loader:load_dimensions:30 - Syncing DimProduct...
+2025-12-26 16:30:05.022 | INFO     | src.warehouse.loader:load_dimensions:44 - Syncing DimCustomer with RFM profiles...
+2025-12-26 16:31:24.697 | ERROR    | src.warehouse.loader:load_dimensions:64 - Error loading dimensions: (psycopg2.OperationalError) server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+
+[SQL: DELETE FROM dim_customer]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-12-26 16:31:24.700 | CRITICAL | __main__:process_data:105 - Warehouse load failed: (psycopg2.OperationalError) server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+
+[SQL: DELETE FROM dim_customer]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
